@@ -163,6 +163,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab64590856b361e4c9cf401de218da94, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  HeatSpreadSpeed: 0.1
+  NeutralColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  HotColor: {r: 1, g: 0, b: 0, a: 1}
+  ColdColor: {r: 0, g: 0, b: 1, a: 1}
   CellPrefab: {fileID: 692388508308312067, guid: cf968a14725c9024186ec3db43ba1b81, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

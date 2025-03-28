@@ -11,8 +11,6 @@ namespace Core
 {
     partial struct Generate2DSystem : ISystem
     {
-        public const Int32 GridSize = 256;
-
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -29,24 +27,18 @@ namespace Core
             // Get the CellPrefab from the Config component
             var cellPrefab = config.CellPrefab;
 
-            var rnd = new Random( 1 );
+            var rnd = new Random( config.Seed );
 
             // Create a new render entity for each cell in the grid
-            var cellTransform = state.EntityManager.GetComponentData<LocalTransform>( config.CellPrefab );
-            for (int x = 0; x < GridSize; x++)
+            for (int x = 0; x < Config.GridSize; x++)
             {
-                for (int y = 0; y < GridSize; y++)
+                for (int y = 0; y < Config.GridSize; y++)
                 {
                     var cellEntity = state.EntityManager.Instantiate(cellPrefab);
-                    state.EntityManager.SetComponentData( cellEntity, cellTransform );
-                    state.EntityManager.SetComponentData( cellEntity, new URPMaterialPropertyBaseColor()
-                                                                      {
-                                                                              Value = new float4( 1, 1, 1, 1 )
-                                                                      });
                 }
             }
 
-            var cellsCount = GridSize * GridSize;
+            var cellsCount = Config.GridSize * Config.GridSize;
             {
                 //Create simulation grid state buffer
                 var gridEntity = state.EntityManager.CreateSingletonBuffer<CellState>( "Grid" );
@@ -56,7 +48,7 @@ namespace Core
                 {
                     buffer[i] = new CellState()
                     {
-                            Temperature = rnd.NextFloat( 0, 1 ),
+                            Temperature = rnd.NextFloat( -1, 1 ),
                     };
                 }
             }
@@ -66,13 +58,14 @@ namespace Core
                 var x = 0;
                 var z = 0;
 
-                foreach ( var trans in SystemAPI.Query<RefRW<LocalTransform>>().WithAll<Cell>() )
+                foreach ( var (trans, cell) in SystemAPI.Query<RefRW<LocalTransform>, RefRW<Cell>>() )
                 {
                     trans.ValueRW.Position.x = x + 0.5f;
                     trans.ValueRW.Position.z = z + 0.5f;
+                    cell.ValueRW.position = new int2( x, z );
 
                     x++;
-                    if ( x >= GridSize )
+                    if ( x >= Config.GridSize )
                     {
                         x = 0;
                         z++;

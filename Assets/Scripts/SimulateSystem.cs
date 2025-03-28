@@ -14,13 +14,18 @@ namespace Core
         {
             state.RequireForUpdate<Config>();
             state.RequireForUpdate<CellState>();
+            state.RequireForUpdate<Input>();
         }
 
         [BurstCompile]
-        public void OnUpdate(ref SystemState state)
+        public void OnUpdate(ref SystemState state )
         {
             var cellsStateBuffer = SystemAPI.GetSingletonBuffer<CellState>();
             var config          = SystemAPI.GetSingleton<Config>();
+            var input = SystemAPI.GetSingleton<Input>();
+            if( input.IsSelectedCell )
+                ChangeTemperature( cellsStateBuffer, input.SelectedCell.x, input.SelectedCell.y, input.TemperatureDiff );
+
             state.Dependency = SimulateCellularAuto( state.Dependency, ref state, cellsStateBuffer, config );
         }
 
@@ -33,6 +38,12 @@ namespace Core
                               HeatSpreadSpeedScaled = SystemAPI.Time.DeltaTime * config.HeatSpreadSpeed,
                       };
             return job.Schedule( dependency );
+        }
+
+        private void ChangeTemperature(DynamicBuffer<CellState> cellsStateBuffer, int row, int col, float tempDiff)
+        {
+            var index = col * Config.GridSize + row;
+            cellsStateBuffer.ElementAt( index ).Temperature += tempDiff;
         }
 
         [BurstCompile]

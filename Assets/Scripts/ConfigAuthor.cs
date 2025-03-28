@@ -24,7 +24,8 @@ namespace Core
                                                 NeutralColor    = (Vector4)authoring.NeutralColor,
                                                 HotColor        = (Vector4)authoring.HotColor,
                                                 ColdColor       = (Vector4)authoring.ColdColor,
-                                                CellPrefab = GetEntity( authoring.CellPrefab, TransformUsageFlags.Renderable )
+                                                CellPrefab = GetEntity( authoring.CellPrefab, TransformUsageFlags.Renderable ),
+                                                Seed = (uint)UnityEngine.Random.Range( 1, uint.MaxValue ),
                                           } ) ;
 
         }
@@ -32,7 +33,9 @@ namespace Core
 
     public struct Config : IComponentData
     {
-        public float HeatSpreadSpeed;
+        public uint Seed;
+
+        public float  HeatSpreadSpeed;
         public float4 NeutralColor;
         public float4 HotColor;
         public float4 ColdColor;

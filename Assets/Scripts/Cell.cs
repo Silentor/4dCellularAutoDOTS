@@ -1,15 +1,14 @@
 ﻿using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Core
 {
-    public partial struct Cell : IComponentData
+    public struct Cell : IComponentData
     {
-        public int X;
-        public int Y;
-        public bool IsAlive;
+        public int2 position;
     }
 
-    public partial struct CellState : IBufferElementData
+    public struct CellState : IBufferElementData
     {
         public float Temperature;
     }
