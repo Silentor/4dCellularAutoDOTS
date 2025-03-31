@@ -6,3 +6,6 @@ The main goal is to learn some practical features of DOTS in the fields of simul
 ECS, Jobs, Burst. Full ECS approach for generation, simulation and visualization of cellular automata. Vectorization. Some input processing for viewing different parts of grid (for higher dimensions).
 ## How to use the results
 There are some ideas of global map consist of isolated islands, but in 4D space globally. So weather effects, magical energy currents, ripples of time-changing effects must be evolved in 4d space
+## Sources
+- https://unity.com/resources/dots-boot-camp-day-1
+- https://discussions.unity.com/t/passing-data-from-monobehaviour-to-system/942299/5
