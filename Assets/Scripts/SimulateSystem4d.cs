@@ -1,3 +1,4 @@
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -8,12 +9,13 @@ using UnityEngine;
 
 namespace Core
 {
-    partial struct SimulateSystem : ISystem
+    partial struct SimulateSystem4d : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<Config>();
+            state.RequireForUpdate<Tag_4dWorkflow>();
             state.RequireForUpdate<SimulationState>();
             state.RequireForUpdate<Input>();
         }
@@ -29,9 +31,12 @@ namespace Core
             var input = SystemAPI.GetSingleton<Input>();
 
             //Process input
-            if( input.IsSelectedCell && input.Clicked )
-                //ChangeTemperature( prevBuffer, input.SelectedCell.x, input.SelectedCell.y, input.TemperatureDiff );
-                AddWave( prevBuffer, input.SelectedCell.x, input.SelectedCell.y, input.HeightDiff );
+            if ( input.IsSelectedCell && input.Clicked )
+                    //ChangeTemperature( prevBuffer, input.SelectedCell.x, input.SelectedCell.y, input.TemperatureDiff );
+            {
+                var selectedCell4d = new int4( input.SelectedCell, input.WCoord );
+                AddWave( prevBuffer, selectedCell4d, input.HeightDiff );
+            }
 
             state.Dependency = SimulateCellularAuto( state.Dependency, ref state, prevBuffer, currentBuffer, config );
         }
@@ -45,13 +50,20 @@ namespace Core
             //                   Output                = outputBuffer,
             //                   HeatSpreadSpeedScaled = SystemAPI.Time.DeltaTime * config.HeatSpreadSpeed,
             //           };
-            var job = new WaveSpreadJob_SingleThreaded()
+            // var job = new WaveSpreadJob_SingleThreaded()
+            //           {
+            //                   Buffer1                 = inputBuffer,
+            //                   Buffer2                = outputBuffer,
+            //                   DampingDivisor = 64,
+            //           };
+            // return job.Schedule( dependency );
+            var job = new WaveSpreadJob_Parallel()
                       {
-                              Buffer1                 = inputBuffer,
-                              Buffer2                = outputBuffer,
+                              Buffer1        = inputBuffer,
+                              Buffer2        = outputBuffer,
                               DampingDivisor = 64,
                       };
-            return job.Schedule( dependency );
+            return job.Schedule( inputBuffer.Length, 2048, dependency );
         }
 
         private void ChangeTemperature(DynamicBuffer<CellState> cellsStateBuffer, int row, int col, float tempDiff)
@@ -60,9 +72,9 @@ namespace Core
             cellsStateBuffer.ElementAt( index ).Temperature += tempDiff;
         }
 
-        private void AddWave(DynamicBuffer<CellState> cellsStateBuffer, int row, int col, float waveHeight )
+        private void AddWave(DynamicBuffer<CellState> cellsStateBuffer, int4 pos, float waveHeight )
         {
-            var index = PositionUtils.PositionToIndex( row, col );
+            var index = PositionUtils.PositionToIndex( pos );
             cellsStateBuffer.ElementAt( index ).Height += waveHeight;
         }
 
@@ -73,7 +85,7 @@ namespace Core
         }
 
         [BurstCompile]
-        public struct HeatSpreadJob_SingleThreaded : IJob
+        public struct HeatSpreadJob_SingleThreaded : IJob         //Not converted
         {
             [NativeDisableContainerSafetyRestriction]
             public            DynamicBuffer<CellState> Output;
@@ -122,7 +134,7 @@ namespace Core
 
         //https://web.archive.org/web/20160418004149/http://freespace.virgin.net/hugo.elias/graphics/x_water.htm
         [BurstCompile]
-        public struct WaveSpreadJob_SingleThreaded : IJob
+        public struct WaveSpreadJob_SingleThreaded : IJob                 //4D
         {
             [NativeDisableContainerSafetyRestriction]
             public            DynamicBuffer<CellState> Buffer2;
@@ -134,22 +146,32 @@ namespace Core
             {
                 for (int i = 0; i < Buffer1.Length; i++)
                 {
-                    var pos = PositionUtils.IndexToPosition2( i );
-                    var row = pos.x;
-                    var col = pos.y;
+                    var pos = PositionUtils.IndexToPosition4( i );
+                    var x = pos.x;
+                    var y = pos.y;
+                    var z = pos.z;
+                    var w = pos.w;
 
                     //Grid is wrapped
-                    var prevCol = (col - 1 + Config.GridSize) % Config.GridSize;
-                    var nextCol = (col     + 1)               % Config.GridSize;
-                    var prevRow = (row - 1 + Config.GridSize) % Config.GridSize;
-                    var nextRow = (row     + 1)               % Config.GridSize;
+                    var prevX = (x - 1 + Config.GridSize) % Config.GridSize;
+                    var nextX = (x     + 1)               % Config.GridSize;
+                    var prevY = (y - 1 + Config.GridSize) % Config.GridSize;
+                    var nextY = (y     + 1)               % Config.GridSize;
+                    var prevZ = (z - 1 + Config.GridSize) % Config.GridSize;
+                    var nextZ = (z     + 1)               % Config.GridSize;
+                    var prevW = (w - 1 + Config.GridSize) % Config.GridSize;
+                    var nextW = (w     + 1)               % Config.GridSize;
 
                     var targetAverage = 0f;
-                    targetAverage += GetHeight( prevRow, col );
-                    targetAverage += GetHeight( nextRow, col );
-                    targetAverage += GetHeight( row, prevCol );
-                    targetAverage += GetHeight( row, nextCol );
-                    targetAverage /= 4f;
+                    targetAverage += GetHeight( prevX, y, z, w );
+                    targetAverage += GetHeight( nextX, y, z, w );
+                    targetAverage += GetHeight( x, prevY, z, w );
+                    targetAverage += GetHeight( x, nextY, z, w );
+                    targetAverage += GetHeight( x, y, prevZ, w );
+                    targetAverage += GetHeight( x, y, nextZ, w );
+                    targetAverage += GetHeight( x, y, z, prevW );
+                    targetAverage += GetHeight( x, y, z, nextW );
+                    targetAverage /= 8f;
 
                     var state = Buffer2[ i ];
                     var height = targetAverage - state.Height;       //Move height to zero with velocity from past wave height. Smart trick!
@@ -160,11 +182,63 @@ namespace Core
                 }
             }
 
-            private float GetHeight(int row, int col)
+            private float GetHeight(int x, int y, int z, int w)
             {
-                return Buffer1[PositionUtils.PositionToIndex( row, col )].Height;
+                return Buffer1[PositionUtils.PositionToIndex( x, y, z, w )].Height;
             }
         }
 
+        //https://web.archive.org/web/20160418004149/http://freespace.virgin.net/hugo.elias/graphics/x_water.htm
+        [BurstCompile]
+        public struct WaveSpreadJob_Parallel : IJobParallelFor
+        {
+            [NativeDisableContainerSafetyRestriction]
+            public            DynamicBuffer<CellState> Buffer2;
+            [NativeDisableContainerSafetyRestriction]
+            [ReadOnly] public DynamicBuffer<CellState> Buffer1;
+            public            float                  DampingDivisor;
+
+            public void Execute(Int32 index )
+            {
+                var pos = PositionUtils.IndexToPosition4( index );
+                var x = pos.x;
+                var y = pos.y;
+                var z = pos.z;
+                var w = pos.w;
+
+                //Grid is wrapped
+                var prevX = (x - 1 + Config.GridSize) % Config.GridSize;
+                var nextX = (x     + 1)               % Config.GridSize;
+                var prevY = (y - 1 + Config.GridSize) % Config.GridSize;
+                var nextY = (y     + 1)               % Config.GridSize;
+                var prevZ = (z - 1 + Config.GridSize) % Config.GridSize;
+                var nextZ = (z     + 1)               % Config.GridSize;
+                var prevW = (w - 1 + Config.GridSize) % Config.GridSize;
+                var nextW = (w     + 1)               % Config.GridSize;
+
+                var targetAverage = 0f;
+                targetAverage += GetHeight( prevX, y, z, w );
+                targetAverage += GetHeight( nextX, y, z, w );
+                targetAverage += GetHeight( x, prevY, z, w );
+                targetAverage += GetHeight( x, nextY, z, w );
+                targetAverage += GetHeight( x, y, prevZ, w );
+                targetAverage += GetHeight( x, y, nextZ, w );
+                targetAverage += GetHeight( x, y, z, prevW );
+                targetAverage += GetHeight( x, y, z, nextW );
+                targetAverage /= 8f;
+
+                var state = Buffer2[ index ];
+                var height = targetAverage - state.Height;       //Move height to zero with velocity from past wave height. Smart trick!
+                height       -= (height / DampingDivisor);                              //Damping
+                state.Height =  height;
+
+                Buffer2[ index ] = state;
+            }
+
+            private float GetHeight(int x, int y, int z, int w)
+            {
+                return Buffer1[PositionUtils.PositionToIndex( x, y, z, w )].Height;
+            }
+        }
     }
 }

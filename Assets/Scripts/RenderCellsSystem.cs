@@ -45,6 +45,7 @@ namespace Core
                 HotColor = config.HotColor,
                 ColdColor = config.ColdColor,
                 SelectedCellIndex = input.IsSelectedCell ? PositionUtils.PositionToIndex( input.SelectedCell ) : -1,
+                WCoord = input.WCoord,
             };
             return job.Schedule( dependency );
         }
@@ -58,9 +59,14 @@ namespace Core
             public float4 HotColor;
             public float4 ColdColor;
             public int SelectedCellIndex;
+            public int WCoord;
 
             public void Execute( ref URPMaterialPropertyBaseColor color, ref LocalTransform trans, [EntityIndexInQuery] int entityIndex )
             {
+                var coords4d = PositionUtils.IndexToPosition4( entityIndex );
+                coords4d.w = WCoord;
+                entityIndex = PositionUtils.PositionToIndex( coords4d );
+
                 var temperature = StateBuffer[ entityIndex ].Temperature;
                 if( temperature >= 0 )
                     color.Value = math.lerp( NeutralColor, HotColor, math.saturate( temperature) );

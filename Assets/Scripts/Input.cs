@@ -7,8 +7,9 @@ namespace Core
     {
         public bool IsSelectedCell;
         public bool Clicked;
-        public int2 SelectedCell;
+        public int3 SelectedCell;
         public float TemperatureDiff;
         public float HeightDiff;
+        public int WCoord;
     }
 }

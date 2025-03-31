@@ -11,6 +11,8 @@ namespace Core
     {
         public Vector2 LookAroundSpeed = new Vector2( 0.2f, 0.2f );
 
+        public Int32 SelectedWCoord => _wCoord;
+
         private Transform   _cameraTransform;
 
         private Vector3     _eulerRotation;
@@ -22,6 +24,11 @@ namespace Core
         private Entity _inputEntity;
         private InputAction _hotAction;
         private InputAction _coldAction;
+        private InputAction _wCoordDeltaAction;
+        private Int32 _wCoord;
+        private ConfigAuthor _config;
+
+
 
         private void Start( )
         {
@@ -30,11 +37,13 @@ namespace Core
             _sprintAction     = InputSystem.actions.FindAction( "Sprint" );
             _hotAction     = InputSystem.actions.FindAction( "Attack" );
             _coldAction     = InputSystem.actions.FindAction( "Cold" );
+            _wCoordDeltaAction     = InputSystem.actions.FindAction( "WCoordDelta" );
             _camera = Camera.main;
             _cameraTransform  = _camera.transform;
             _eulerRotation    = _cameraTransform.rotation.eulerAngles;
 
             _world = World.DefaultGameObjectInjectionWorld;
+            _config = FindAnyObjectByType<ConfigAuthor>();
         }
 
         private void Update( )
@@ -46,7 +55,7 @@ namespace Core
             {
                 var lookDelta          = _lookAroundAction.ReadValue<Vector2>() * LookAroundSpeed;
                 _eulerRotation            += new Vector3( -lookDelta.y,                             lookDelta.x,      0 );
-                _eulerRotation            =  new Vector3( Mathf.Clamp( _eulerRotation.x, -45, 45 ), _eulerRotation.y, 0 );
+                _eulerRotation            =  new Vector3( Mathf.Clamp( _eulerRotation.x, -80, 80 ), _eulerRotation.y, 0 );
                 _cameraTransform.rotation =  Quaternion.Euler( _eulerRotation );
             }
 
@@ -60,6 +69,11 @@ namespace Core
                 var localMovement = _cameraTransform.rotation * worldMovement;
                 _cameraTransform.position += localMovement;
             }
+
+            //Scroll W coord for 4D
+            int wCoordDelta = 0;
+            if( _config.Workflow == EWorkflow.Mode4D )
+                wCoordDelta = Mathf.RoundToInt( _wCoordDeltaAction.ReadValue<float>() );
 
             //Change cell by mouse
             var clicked = false;
@@ -94,23 +108,25 @@ namespace Core
                  }
             }
 
-            SetInputToECS( isSelectedCell, clicked, selectedCell, temperatureDiff );
+            SetInputToECS( isSelectedCell, clicked, selectedCell, wCoordDelta, temperatureDiff );
         }
 
-        private void SetInputToECS( bool isSelectedCell, bool isClicked, int2 selectedCell, float temperatureDiff )
+        private void SetInputToECS( bool isSelectedCell, bool isClicked, int2 selectedCell, int wCoordDelta, float temperatureDiff )
         {
             if ( _world.IsCreated )
             {
                 if ( !_world.EntityManager.Exists( _inputEntity ) )
                     _inputEntity = _world.EntityManager.CreateSingleton<Input>(  );
 
+                _wCoord = (_wCoord + wCoordDelta + Config.GridSize) % Config.GridSize;
                 _world.EntityManager.SetComponentData( _inputEntity, new Input()
                                                                      {
                                                                              IsSelectedCell = isSelectedCell,
                                                                              Clicked = isClicked,
-                                                                             SelectedCell = selectedCell,
+                                                                             SelectedCell = new int3( selectedCell.x, selectedCell.y, 0 ),
                                                                              //TemperatureDiff = temperatureDiff,
-                                                                             HeightDiff = temperatureDiff
+                                                                             HeightDiff = temperatureDiff,
+                                                                             WCoord = _wCoord
                                                                      } );
             }
         }

@@ -9,12 +9,13 @@ using Random = Unity.Mathematics.Random;
 
 namespace Core
 {
-    partial struct Generate2DSystem : ISystem
+    partial struct GenerateSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<Config>();
+            //state.RequireForUpdate<Tag_2dWorkflow>();
         }
 
         [BurstCompile]
@@ -29,13 +30,11 @@ namespace Core
 
             var rnd = new Random( config.Seed );
 
-            // Create a new render entity for each cell in the grid
-            for (int x = 0; x < Config.GridSize; x++)
+            // Create a new render entity for each cell in the grid (but only for 3d max)
+            var maxRenderableEntities = math.min( config.GridTotalCount, Config.GridSize * Config.GridSize * Config.GridSize );
+            for (int i = 0; i < maxRenderableEntities; i++)
             {
-                for (int y = 0; y < Config.GridSize; y++)
-                {
-                    var cellEntity = state.EntityManager.Instantiate(cellPrefab);
-                }
+                state.EntityManager.Instantiate(cellPrefab);
             }
 
             {
@@ -47,9 +46,9 @@ namespace Core
                 state.EntityManager.AddBuffer<CellState>( gridEntity2 );
                 var buffer1     = state.EntityManager.GetBuffer<CellState>( gridEntity1 );
                 var buffer2     = state.EntityManager.GetBuffer<CellState>( gridEntity2 );
-                buffer1.Length = Config.GridTotalCount;
-                buffer2.Length = Config.GridTotalCount;
-                for ( int i = 0; i < Config.GridTotalCount; i++ )
+                buffer1.Length = config.GridTotalCount;
+                buffer2.Length = config.GridTotalCount;
+                for ( int i = 0; i < config.GridTotalCount; i++ )
                 {
                     var initState = new CellState()
                                  {
@@ -58,7 +57,6 @@ namespace Core
                     buffer1[ i ] = initState;
                     buffer2[ i ] = initState;
                 }
-
                 
                 state.EntityManager.SetComponentData( simulStateEntity, new SimulationState(gridEntity1, gridEntity2) );
             }
@@ -66,14 +64,26 @@ namespace Core
             {
                 //Init cells, make sure cells arranged according to the Cell index
                 var index = 0;
-                foreach ( var (trans, _) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Cell>>() )
+                if ( config.Workflow == EWorkflow.Mode2D )
                 {
-                    var pos = PositionUtils.IndexToPosition2( index++ );
-                    trans.ValueRW.Position.x = pos.x + 0.5f;
-                    trans.ValueRW.Position.z = pos.y + 0.5f;
+                    foreach ( var (trans, _) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Cell>>() )
+                    {
+                        var pos = PositionUtils.IndexToPosition2( index++ );
+                        trans.ValueRW.Position.x = pos.x + 0.5f;
+                        trans.ValueRW.Position.z = pos.y + 0.5f;
+                    }
+                }
+                else if ( config.Workflow == EWorkflow.Mode3D || config.Workflow == EWorkflow.Mode4D )
+                {
+                    foreach ( var (trans, _) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Cell>>() )
+                    {
+                        var pos = PositionUtils.IndexToPosition3( index++ );
+                        trans.ValueRW.Position.x = pos.x + 0.5f;
+                        trans.ValueRW.Position.y = pos.y + 0.5f;
+                        trans.ValueRW.Position.z = pos.z + 0.5f;
+                    }
                 }
             }
-
         }
 
         [BurstCompile]
