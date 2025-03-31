@@ -1,3 +1,4 @@
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -46,13 +47,26 @@ namespace Core
             //                   Output                = outputBuffer,
             //                   HeatSpreadSpeedScaled = SystemAPI.Time.DeltaTime * config.HeatSpreadSpeed,
             //           };
-            var job = new WaveSpreadJob_SingleThreaded()
-                      {
-                              Buffer1                 = inputBuffer,
-                              Buffer2                = outputBuffer,
-                              DampingDivisor = 64,
-                      };
-            return job.Schedule( dependency );
+            if ( inputBuffer.Length <= 65535 )
+            {
+                var job = new WaveSpreadJob_SingleThreaded()
+                          {
+                                  Buffer1                 = inputBuffer,
+                                  Buffer2                = outputBuffer,
+                                  DampingDivisor = 64,
+                          };
+                return job.Schedule( dependency );
+            }
+            else
+            {
+                var job = new WaveSpreadJob_Parallel()
+                          {
+                                  Buffer1        = inputBuffer,
+                                  Buffer2        = outputBuffer,
+                                  DampingDivisor = 64,
+                          };
+                return job.Schedule( inputBuffer.Length, 2048, dependency );
+            }
         }
 
         private void ChangeTemperature(DynamicBuffer<CellState> cellsStateBuffer, int row, int col, float tempDiff)
@@ -163,6 +177,56 @@ namespace Core
                     state.Height = height;
 
                     Buffer2[ i ] = state;
+                }
+            }
+
+            private float GetHeight(int x, int y, int z)
+            {
+                return Buffer1[PositionUtils.PositionToIndex( x, y, z )].Height;
+            }
+        }
+
+        //https://web.archive.org/web/20160418004149/http://freespace.virgin.net/hugo.elias/graphics/x_water.htm
+        [BurstCompile]
+        public struct WaveSpreadJob_Parallel : IJobParallelFor                 //3D
+        {
+            [NativeDisableContainerSafetyRestriction]
+            public            DynamicBuffer<CellState> Buffer2;
+            [NativeDisableContainerSafetyRestriction]
+            [ReadOnly] public DynamicBuffer<CellState> Buffer1;
+            public            float                  DampingDivisor;
+
+            public void Execute( Int32 index)
+            {
+                {
+                    var pos = PositionUtils.IndexToPosition3( index );
+                    var x = pos.x;
+                    var y = pos.y;
+                    var z = pos.z;
+
+                    //Grid is wrapped
+                    var prevX = (x - 1 + Config.GridSize) % Config.GridSize;
+                    var nextX = (x     + 1)               % Config.GridSize;
+                    var prevY = (y - 1 + Config.GridSize) % Config.GridSize;
+                    var nextY = (y     + 1)               % Config.GridSize;
+                    var prevZ = (z - 1 + Config.GridSize) % Config.GridSize;
+                    var nextZ = (z     + 1)               % Config.GridSize;
+
+                    var targetAverage = 0f;
+                    targetAverage += GetHeight( prevX, y, z );
+                    targetAverage += GetHeight( nextX, y, z );
+                    targetAverage += GetHeight( x, prevY, z );
+                    targetAverage += GetHeight( x, nextY, z );
+                    targetAverage += GetHeight( x, y, prevZ );
+                    targetAverage += GetHeight( x, y, nextZ );
+                    targetAverage /= 6f;
+
+                    var state = Buffer2[ index ];
+                    var height = targetAverage - state.Height;       //Move height to zero with velocity from past wave height. Smart trick!
+                    height -= (height / DampingDivisor);                              //Damping
+                    state.Height = height;
+
+                    Buffer2[ index ] = state;
                 }
             }
 

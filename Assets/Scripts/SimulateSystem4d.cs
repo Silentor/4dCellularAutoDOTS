@@ -50,20 +50,26 @@ namespace Core
             //                   Output                = outputBuffer,
             //                   HeatSpreadSpeedScaled = SystemAPI.Time.DeltaTime * config.HeatSpreadSpeed,
             //           };
-            // var job = new WaveSpreadJob_SingleThreaded()
-            //           {
-            //                   Buffer1                 = inputBuffer,
-            //                   Buffer2                = outputBuffer,
-            //                   DampingDivisor = 64,
-            //           };
-            // return job.Schedule( dependency );
-            var job = new WaveSpreadJob_Parallel()
-                      {
-                              Buffer1        = inputBuffer,
-                              Buffer2        = outputBuffer,
-                              DampingDivisor = 64,
-                      };
-            return job.Schedule( inputBuffer.Length, 2048, dependency );
+            if ( inputBuffer.Length <= 65536 )
+            {
+                var job = new WaveSpreadJob_SingleThreaded()
+                          {
+                                  Buffer1        = inputBuffer,
+                                  Buffer2        = outputBuffer,
+                                  DampingDivisor = 64,
+                          };
+                return job.Schedule( dependency );
+            }
+            else
+            {
+                var job = new WaveSpreadJob_Parallel()
+                          {
+                                  Buffer1        = inputBuffer,
+                                  Buffer2        = outputBuffer,
+                                  DampingDivisor = 64,
+                          };
+                return job.Schedule( inputBuffer.Length, 2048, dependency );
+            }
         }
 
         private void ChangeTemperature(DynamicBuffer<CellState> cellsStateBuffer, int row, int col, float tempDiff)
