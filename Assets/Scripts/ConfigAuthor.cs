@@ -43,5 +43,6 @@ namespace Core
         public Entity CellPrefab;
 
         public const int GridSize = 256;
+        public const int GridTotalCount = GridSize * GridSize;
     }
 }

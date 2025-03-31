@@ -8,7 +8,7 @@ using Unity.Transforms;
 
 namespace Core
 {
-    [UpdateAfter(typeof(SimulateSystem))]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
     partial struct RenderCellsSystem : ISystem
     {
         [BurstCompile]
@@ -16,17 +16,18 @@ namespace Core
         {
             state.RequireForUpdate<Config>();
             state.RequireForUpdate<Cell>();
-            state.RequireForUpdate<CellState>();
+            state.RequireForUpdate<SimulationState>();
             state.RequireForUpdate<Input>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-             var cellsStateBuffer = SystemAPI.GetSingletonBuffer<CellState>();
+            var simulState = SystemAPI.GetSingleton<SimulationState>();
+            var currentBuffer = state.EntityManager.GetBuffer<CellState>( simulState.GetCurrentBuffer() );
              var config          = SystemAPI.GetSingleton<Config>();
              var input = SystemAPI.GetSingleton<Input>();
-             state.Dependency = UpdateCellColor( state.Dependency, ref state, cellsStateBuffer, config, input );
+             state.Dependency = UpdateCellColor( state.Dependency, ref state, currentBuffer, config, input );
         }
 
         [BurstCompile]
@@ -43,7 +44,7 @@ namespace Core
                 NeutralColor = config.NeutralColor,
                 HotColor = config.HotColor,
                 ColdColor = config.ColdColor,
-                SelectedCell = input.IsSelectedCell ? input.SelectedCell : new int2(int.MaxValue, int.MaxValue),
+                SelectedCellIndex = input.IsSelectedCell ? PositionUtils.PositionToIndex( input.SelectedCell ) : -1,
             };
             return job.Schedule( dependency );
         }
@@ -56,16 +57,19 @@ namespace Core
             public float4 NeutralColor;
             public float4 HotColor;
             public float4 ColdColor;
-            public int2 SelectedCell;
+            public int SelectedCellIndex;
 
-            public void Execute( ref URPMaterialPropertyBaseColor color, ref LocalTransform trans, Cell cell, [EntityIndexInQuery] int entityIndex )
+            public void Execute( ref URPMaterialPropertyBaseColor color, ref LocalTransform trans, [EntityIndexInQuery] int entityIndex )
             {
                 var temperature = StateBuffer[ entityIndex ].Temperature;
                 if( temperature >= 0 )
                     color.Value = math.lerp( NeutralColor, HotColor, math.saturate( temperature) );
                 else
                     color.Value = math.lerp( NeutralColor, ColdColor, math.saturate( -temperature ) );
-                trans.Scale = math.all( cell.position == SelectedCell ) ? 1f : 0.8f;
+
+                var height = StateBuffer[ entityIndex ].Height;
+                trans.Scale = math.lerp( 0.5f, 1.5f, (height + 1 ) / 2 ) * 0.8f;
+                trans.Scale = entityIndex == SelectedCellIndex ? 1f : trans.Scale;
 
             }
         }

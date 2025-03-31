@@ -38,38 +38,39 @@ namespace Core
                 }
             }
 
-            var cellsCount = Config.GridSize * Config.GridSize;
             {
                 //Create simulation grid state buffer
-                var gridEntity = state.EntityManager.CreateSingletonBuffer<CellState>( "Grid" );
-                var buffer     = state.EntityManager.GetBuffer<CellState>( gridEntity );
-                buffer.Length = cellsCount;
-                for ( int i = 0; i < buffer.Length; i++ )
+                var simulStateEntity = state.EntityManager.CreateSingleton<SimulationState>( "SimulState" );
+                var gridEntity1 = state.EntityManager.CreateEntity( );
+                var gridEntity2 = state.EntityManager.CreateEntity( );
+                state.EntityManager.AddBuffer<CellState>( gridEntity1 );
+                state.EntityManager.AddBuffer<CellState>( gridEntity2 );
+                var buffer1     = state.EntityManager.GetBuffer<CellState>( gridEntity1 );
+                var buffer2     = state.EntityManager.GetBuffer<CellState>( gridEntity2 );
+                buffer1.Length = Config.GridTotalCount;
+                buffer2.Length = Config.GridTotalCount;
+                for ( int i = 0; i < Config.GridTotalCount; i++ )
                 {
-                    buffer[i] = new CellState()
-                    {
-                            Temperature = rnd.NextFloat( -1, 1 ),
-                    };
+                    var initState = new CellState()
+                                 {
+                                         Temperature = rnd.NextFloat( -1, 1 ),
+                                 };
+                    buffer1[ i ] = initState;
+                    buffer2[ i ] = initState;
                 }
+
+                
+                state.EntityManager.SetComponentData( simulStateEntity, new SimulationState(gridEntity1, gridEntity2) );
             }
 
             {
-                //Init cells
-                var x = 0;
-                var z = 0;
-
-                foreach ( var (trans, cell) in SystemAPI.Query<RefRW<LocalTransform>, RefRW<Cell>>() )
+                //Init cells, make sure cells arranged according to the Cell index
+                var index = 0;
+                foreach ( var (trans, _) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Cell>>() )
                 {
-                    trans.ValueRW.Position.x = x + 0.5f;
-                    trans.ValueRW.Position.z = z + 0.5f;
-                    cell.ValueRW.position = new int2( x, z );
-
-                    x++;
-                    if ( x >= Config.GridSize )
-                    {
-                        x = 0;
-                        z++;
-                    }
+                    var pos = PositionUtils.IndexToPosition2( index++ );
+                    trans.ValueRW.Position.x = pos.x + 0.5f;
+                    trans.ValueRW.Position.z = pos.y + 0.5f;
                 }
             }
 

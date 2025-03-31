@@ -61,14 +61,24 @@ namespace Core
                 _cameraTransform.position += localMovement;
             }
 
-            //Change temperature by mouse
+            //Change cell by mouse
+            var clicked = false;
             var temperatureDiff = 0f;
             if ( _hotAction.IsPressed() )
-                temperatureDiff += Time.deltaTime;
-            if( _coldAction.IsPressed() )
-                temperatureDiff -= Time.deltaTime;
+            {
+                temperatureDiff = 10;
+                //temperatureDiff += Time.deltaTime;
+                clicked = true;
+            }
 
-            //Select cell by mouse
+            if ( _coldAction.IsPressed() )
+            {
+                temperatureDiff = -10;
+                //temperatureDiff -= Time.deltaTime;
+                clicked = true;
+            }
+
+            //Select cell by mouse hover
             int2 selectedCell = int2.zero;
             bool isSelectedCell = false;
             var mouseRay = _camera.ScreenPointToRay( mousePosition );
@@ -84,10 +94,10 @@ namespace Core
                  }
             }
 
-            SetInputToECS( isSelectedCell, selectedCell, temperatureDiff );
+            SetInputToECS( isSelectedCell, clicked, selectedCell, temperatureDiff );
         }
 
-        private void SetInputToECS( bool isSelectedCell, int2 selectedCell, float temperatureDiff )
+        private void SetInputToECS( bool isSelectedCell, bool isClicked, int2 selectedCell, float temperatureDiff )
         {
             if ( _world.IsCreated )
             {
@@ -97,8 +107,10 @@ namespace Core
                 _world.EntityManager.SetComponentData( _inputEntity, new Input()
                                                                      {
                                                                              IsSelectedCell = isSelectedCell,
+                                                                             Clicked = isClicked,
                                                                              SelectedCell = selectedCell,
-                                                                             TemperatureDiff = temperatureDiff,
+                                                                             //TemperatureDiff = temperatureDiff,
+                                                                             HeightDiff = temperatureDiff
                                                                      } );
             }
         }
