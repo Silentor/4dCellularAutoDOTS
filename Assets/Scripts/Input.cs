@@ -1,4 +1,5 @@
-﻿using Unity.Entities;
+﻿using System;
+using Unity.Entities;
 using Unity.Mathematics;
 
 namespace Core
@@ -7,9 +8,39 @@ namespace Core
     {
         public bool IsSelectedCell;
         public bool Clicked;
-        public int3 SelectedCell;
+        public bool AltClicked;
+        public EChangeMode ChangeMode;
+
+        public int4 SelectedCell;
         public float TemperatureDiff;
-        public float HeightDiff;
+        public float HeightValue;
+        public float IllValue;
         public int WCoord;
+
+        public float3 CameraPosition;
+        public float3 MouseRay;
+        public int CameraCarveSize;
     }
+
+    public enum EChangeMode
+    {
+        Temp,
+        Wave,
+        Ill
+    }
+
+    [UpdateInGroup(typeof(SimulationSystemGroup), OrderFirst = true)]
+    public partial class InputSystemGroup : ComponentSystemGroup
+    {
+        protected override void OnCreate( )
+        {
+            base.OnCreate();
+
+            // Set the system update order
+            AddSystemToUpdateList( World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<ReadInput>() );
+            AddSystemToUpdateList( World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<ProcessInput>() );
+
+        }
+    }
+
 }

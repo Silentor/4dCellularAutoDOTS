@@ -9,6 +9,7 @@ using UnityEngine;
 
 namespace Core
 {
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     partial struct SimulateSystem4d : ISystem
     {
         [BurstCompile]
@@ -17,71 +18,46 @@ namespace Core
             state.RequireForUpdate<Config>();
             state.RequireForUpdate<Tag_4dWorkflow>();
             state.RequireForUpdate<SimulationState>();
-            state.RequireForUpdate<Input>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state )
         {
-            var simulStateEntity = SystemAPI.GetSingletonEntity<SimulationState>();
-            var simulationState = state.EntityManager.GetComponentData<SimulationState>( simulStateEntity );
-            var currentBuffer = state.EntityManager.GetBuffer<CellState>( simulationState.GetCurrentBuffer() ); //actually frame - 2
-            var prevBuffer = state.EntityManager.GetBuffer<CellState>( simulationState.GetPreviousBuffer() );   //actually frame - 1
+            var simulState = SystemAPI.GetSingleton<SimulationState>();
+            var currentBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetCurrentBuffer() ); //actually frame - 2, also it will be current buffer
+            var prevBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetPreviousBuffer() );   //actually frame - 1
             var config          = SystemAPI.GetSingleton<Config>();
-            var input = SystemAPI.GetSingleton<Input>();
-
-            //Process input
-            if ( input.IsSelectedCell && input.Clicked )
-                    //ChangeTemperature( prevBuffer, input.SelectedCell.x, input.SelectedCell.y, input.TemperatureDiff );
-            {
-                var selectedCell4d = new int4( input.SelectedCell, input.WCoord );
-                AddWave( prevBuffer, selectedCell4d, input.HeightDiff );
-            }
 
             state.Dependency = SimulateCellularAuto( state.Dependency, ref state, prevBuffer, currentBuffer, config );
         }
 
         [BurstCompile]
-        private JobHandle SimulateCellularAuto(JobHandle dependency, ref SystemState state, DynamicBuffer<CellState> inputBuffer, DynamicBuffer<CellState> outputBuffer, Config config )
+        private JobHandle SimulateCellularAuto(JobHandle dependency, ref SystemState state, DynamicBuffer<CellState> prevBuffer, DynamicBuffer<CellState> prevPrev_CurrentBuffer, Config config )
         {
-            // var job = new HeatSpreadJob_SingleThreaded()
-            //           {
-            //                   Input                = inputBuffer,
-            //                   Output                = outputBuffer,
-            //                   HeatSpreadSpeedScaled = SystemAPI.Time.DeltaTime * config.HeatSpreadSpeed,
-            //           };
-            if ( inputBuffer.Length <= 65536 )
-            {
-                var job = new WaveSpreadJob_SingleThreaded()
-                          {
-                                  Buffer1        = inputBuffer,
-                                  Buffer2        = outputBuffer,
-                                  DampingDivisor = 64,
-                          };
-                return job.Schedule( dependency );
-            }
-            else
-            {
-                var job = new WaveSpreadJob_Parallel()
-                          {
-                                  Buffer1        = inputBuffer,
-                                  Buffer2        = outputBuffer,
-                                  DampingDivisor = 64,
-                          };
-                return job.Schedule( inputBuffer.Length, 2048, dependency );
-            }
-        }
+            var input = prevBuffer.ToNativeArray( state.WorldUpdateAllocator );
+            var output = prevPrev_CurrentBuffer.AsNativeArray();
+            var job1 = new HeatSpreadJob()
+                       {
+                               Input               = input,
+                               Output              = output,
+                               ThermalConductivity = math.saturate( config.HeatSpreadSpeed ),
+                       };
+            dependency = job1.Schedule( input.Length, 2048, dependency );
+            var job2 = new WaveSpreadJob()
+                       {
+                               Buffer1      = input,
+                               Buffer2      = output,
+                               DampingCoeff = math.saturate( config.WaveDampCoeff ),
+                       };
+            dependency = job2.Schedule( input.Length, 2048, dependency );
+            var job3 = new IllSpreadJob()
+                       {
+                               Input    = input,
+                               Output   = output,
+                               IllSpeed = math.saturate( config.IllSpeed ),
+                       };
+            return job3.Schedule( input.Length, 2048, dependency );
 
-        private void ChangeTemperature(DynamicBuffer<CellState> cellsStateBuffer, int row, int col, float tempDiff)
-        {
-            var index = PositionUtils.PositionToIndex( row, col );
-            cellsStateBuffer.ElementAt( index ).Temperature += tempDiff;
-        }
-
-        private void AddWave(DynamicBuffer<CellState> cellsStateBuffer, int4 pos, float waveHeight )
-        {
-            var index = PositionUtils.PositionToIndex( pos );
-            cellsStateBuffer.ElementAt( index ).Height += waveHeight;
         }
 
         [BurstCompile]
@@ -91,120 +67,67 @@ namespace Core
         }
 
         [BurstCompile]
-        public struct HeatSpreadJob_SingleThreaded : IJob         //Not converted
+        public struct HeatSpreadJob : IJobParallelFor         
         {
-            [NativeDisableContainerSafetyRestriction]
-            public            DynamicBuffer<CellState> Output;
-            [NativeDisableContainerSafetyRestriction]
-            [ReadOnly] public DynamicBuffer<CellState> Input;
+            public            NativeArray<CellState> Output;
+            [ReadOnly] public NativeArray<CellState> Input;
+            public            float                  ThermalConductivity;
 
-            public            float                  HeatSpreadSpeedScaled;
-
-            public void Execute()
+            public void Execute(  int i )
             {
-                for (int i = 0; i < Input.Length; i++)
-                {
-                    var pos = PositionUtils.IndexToPosition2( i );
-                    var row = pos.x;
-                    var col = pos.y;
+                var pos = PositionUtils.IndexToPosition4( i );
+                var x = pos.x;
+                var y = pos.y;
+                var z = pos.z;
+                var w = pos.w;
 
-                    //Grid is wrapped
-                    var prevCol = (col - 1 + Config.GridSize) % Config.GridSize;
-                    var nextCol = (col + 1) % Config.GridSize;
-                    var prevRow = (row - 1 + Config.GridSize) % Config.GridSize;
-                    var nextRow = (row  + 1) % Config.GridSize;
+                //Grid is wrapped
+                var prevX = (x - 1 + Config.GridSize) % Config.GridSize;
+                var nextX = (x     + 1)               % Config.GridSize;
+                var prevY = (y - 1 + Config.GridSize) % Config.GridSize;
+                var nextY = (y     + 1)               % Config.GridSize;
+                var prevZ = (z - 1 + Config.GridSize) % Config.GridSize;
+                var nextZ = (z     + 1)               % Config.GridSize;
+                var prevW = (w - 1 + Config.GridSize) % Config.GridSize;
+                var nextW = (w     + 1)               % Config.GridSize;
 
-                    //Average temperature of the 4 neighbors
-                    var targetAverage = 0f;
-                    targetAverage += GetTemperature( prevRow, col );
-                    targetAverage += GetTemperature( nextRow, col );
-                    targetAverage += GetTemperature( row, prevCol );
-                    targetAverage += GetTemperature( row, nextCol );
-                    targetAverage /= 4f;
-                    var difference = targetAverage - Input[i].Temperature;
+                //Average temperature of the neighbors
+                var targetAverage = 0f;
+                targetAverage += GetTemperature( prevX, y, z, w );
+                targetAverage += GetTemperature( nextX, y, z, w );
+                targetAverage += GetTemperature( x, prevY, z, w );
+                targetAverage += GetTemperature( x, nextY, z, w );
+                targetAverage += GetTemperature( x, y, prevZ, w );
+                targetAverage += GetTemperature( x, y, nextZ, w );
+                targetAverage += GetTemperature( x, y, z, prevW );
+                targetAverage += GetTemperature( x, y, z, nextW );
+                targetAverage /= 8f;
+                    
+                var currentTemp = Input[i].Temperature;
+                var tempChange = targetAverage - currentTemp;
+                tempChange  *= ThermalConductivity;                    //Temperature conductivity
+                currentTemp += tempChange;
 
-                    //Slow down the dissipation
-                    var value = Input[i].Temperature + math.clamp( difference, -HeatSpreadSpeedScaled, HeatSpreadSpeedScaled );
-
-                    var state = Output[ i ];
-                    state.Temperature = value;
-                    Output[i] = state;
-                }
+                var state = Output[ i ];
+                state.Temperature = currentTemp;
+                Output[i]         = state;
             }
 
-            private float GetTemperature(int row, int col)
+            private float GetTemperature(int x, int y, int z, int w)
             {
-                return Input[PositionUtils.PositionToIndex( row, col )].Temperature;
+                return Input[PositionUtils.PositionToIndex( x, y, z, w )].Temperature;
             }
         }
 
         //https://web.archive.org/web/20160418004149/http://freespace.virgin.net/hugo.elias/graphics/x_water.htm
         [BurstCompile]
-        public struct WaveSpreadJob_SingleThreaded : IJob                 //4D
+        public struct WaveSpreadJob : IJobParallelFor                 
         {
-            [NativeDisableContainerSafetyRestriction]
-            public            DynamicBuffer<CellState> Buffer2;
-            [NativeDisableContainerSafetyRestriction]
-            [ReadOnly] public DynamicBuffer<CellState> Buffer1;
-            public            float                  DampingDivisor;
+            public            NativeArray<CellState> Buffer2;
+            [ReadOnly] public NativeArray<CellState> Buffer1;
+            public            float                  DampingCoeff;
 
-            public void Execute()
-            {
-                for (int i = 0; i < Buffer1.Length; i++)
-                {
-                    var pos = PositionUtils.IndexToPosition4( i );
-                    var x = pos.x;
-                    var y = pos.y;
-                    var z = pos.z;
-                    var w = pos.w;
-
-                    //Grid is wrapped
-                    var prevX = (x - 1 + Config.GridSize) % Config.GridSize;
-                    var nextX = (x     + 1)               % Config.GridSize;
-                    var prevY = (y - 1 + Config.GridSize) % Config.GridSize;
-                    var nextY = (y     + 1)               % Config.GridSize;
-                    var prevZ = (z - 1 + Config.GridSize) % Config.GridSize;
-                    var nextZ = (z     + 1)               % Config.GridSize;
-                    var prevW = (w - 1 + Config.GridSize) % Config.GridSize;
-                    var nextW = (w     + 1)               % Config.GridSize;
-
-                    var targetAverage = 0f;
-                    targetAverage += GetHeight( prevX, y, z, w );
-                    targetAverage += GetHeight( nextX, y, z, w );
-                    targetAverage += GetHeight( x, prevY, z, w );
-                    targetAverage += GetHeight( x, nextY, z, w );
-                    targetAverage += GetHeight( x, y, prevZ, w );
-                    targetAverage += GetHeight( x, y, nextZ, w );
-                    targetAverage += GetHeight( x, y, z, prevW );
-                    targetAverage += GetHeight( x, y, z, nextW );
-                    targetAverage /= 8f;
-
-                    var state = Buffer2[ i ];
-                    var height = targetAverage - state.Height;       //Move height to zero with velocity from past wave height. Smart trick!
-                    height -= (height / DampingDivisor);                              //Damping
-                    state.Height = height;
-
-                    Buffer2[ i ] = state;
-                }
-            }
-
-            private float GetHeight(int x, int y, int z, int w)
-            {
-                return Buffer1[PositionUtils.PositionToIndex( x, y, z, w )].Height;
-            }
-        }
-
-        //https://web.archive.org/web/20160418004149/http://freespace.virgin.net/hugo.elias/graphics/x_water.htm
-        [BurstCompile]
-        public struct WaveSpreadJob_Parallel : IJobParallelFor
-        {
-            [NativeDisableContainerSafetyRestriction]
-            public            DynamicBuffer<CellState> Buffer2;
-            [NativeDisableContainerSafetyRestriction]
-            [ReadOnly] public DynamicBuffer<CellState> Buffer1;
-            public            float                  DampingDivisor;
-
-            public void Execute(Int32 index )
+            public void Execute( Int32 index)
             {
                 var pos = PositionUtils.IndexToPosition4( index );
                 var x = pos.x;
@@ -222,23 +145,24 @@ namespace Core
                 var prevW = (w - 1 + Config.GridSize) % Config.GridSize;
                 var nextW = (w     + 1)               % Config.GridSize;
 
-                var targetAverage = 0f;
-                targetAverage += GetHeight( prevX, y, z, w );
-                targetAverage += GetHeight( nextX, y, z, w );
-                targetAverage += GetHeight( x, prevY, z, w );
-                targetAverage += GetHeight( x, nextY, z, w );
-                targetAverage += GetHeight( x, y, prevZ, w );
-                targetAverage += GetHeight( x, y, nextZ, w );
-                targetAverage += GetHeight( x, y, z, prevW );
-                targetAverage += GetHeight( x, y, z, nextW );
-                targetAverage /= 8f;
+                var smoothedHeight = 0f;
+                smoothedHeight += GetHeight( prevX, y, z, w );
+                smoothedHeight += GetHeight( nextX, y, z, w );
+                smoothedHeight += GetHeight( x, prevY, z, w );
+                smoothedHeight += GetHeight( x, nextY, z, w );
+                smoothedHeight += GetHeight( x, y, prevZ, w );
+                smoothedHeight += GetHeight( x, y, nextZ, w );
+                smoothedHeight += GetHeight( x, y, z, prevW );
+                smoothedHeight += GetHeight( x, y, z, nextW );
+
+                smoothedHeight /= 4f;            //Intentional
 
                 var state = Buffer2[ index ];
-                var height = targetAverage - state.Height;       //Move height to zero with velocity from past wave height. Smart trick!
-                height       -= (height / DampingDivisor);                              //Damping
+                var height = state.Height;     //PrevPrev height aka -wave welocity
+                height       =  smoothedHeight - height;       //Move height to zero with velocity from past wave height. Smart trick!
+                height       *= DampingCoeff;                              //Damping
                 state.Height =  height;
-
-                Buffer2[ index ] = state;
+                Buffer2[ index ] =  state;
             }
 
             private float GetHeight(int x, int y, int z, int w)
@@ -246,5 +170,62 @@ namespace Core
                 return Buffer1[PositionUtils.PositionToIndex( x, y, z, w )].Height;
             }
         }
+
+        [BurstCompile]
+        public struct IllSpreadJob : IJobParallelFor
+        {
+            public            NativeArray<CellState> Output;
+            [ReadOnly] public NativeArray<CellState> Input;
+            public            float                  IllSpeed;
+
+            public void Execute( int index )
+            {
+                var pos = PositionUtils.IndexToPosition4( index  );
+                var x = pos.x;
+                var y = pos.y;
+                var z = pos.z;
+                var w = pos.w;
+
+                //Grid is wrapped
+                var prevX = (x - 1 + Config.GridSize) % Config.GridSize;
+                var nextX = (x     + 1)               % Config.GridSize;
+                var prevY = (y - 1 + Config.GridSize) % Config.GridSize;
+                var nextY = (y     + 1)               % Config.GridSize;
+                var prevZ = (z - 1 + Config.GridSize) % Config.GridSize;
+                var nextZ = (z     + 1)               % Config.GridSize;
+                var prevW = (w - 1 + Config.GridSize) % Config.GridSize;
+                var nextW = (w     + 1)               % Config.GridSize;
+
+
+                //Average illness of the 4 neighbors
+                var targetAverage = 0f;
+                targetAverage = math.max( targetAverage, GetIllness( prevX, y, z, w));
+                targetAverage = math.max( targetAverage, GetIllness( nextX, y, z, w));
+                targetAverage = math.max( targetAverage, GetIllness( x, prevY, z, w));
+                targetAverage = math.max( targetAverage, GetIllness( x, nextY, z, w));
+                targetAverage = math.max( targetAverage, GetIllness( x, y, prevZ, w));
+                targetAverage = math.max( targetAverage, GetIllness( x, y, nextZ, w));
+                targetAverage = math.max( targetAverage, GetIllness( x, y, z, prevW));
+                targetAverage = math.max( targetAverage, GetIllness( x, y, z, nextW));
+                //targetAverage /= 4f;
+
+                var illSpeedNoise = math.clamp( noise.cnoise( (float4)pos / 3.7f ) / 2 + 0.5f, 0.1f, 1f ); //Add some random
+                var currentIllness = Input[index].Illness;
+                var diff = math.saturate( (targetAverage - currentIllness) * IllSpeed * illSpeedNoise ); 
+                currentIllness = math.saturate( currentIllness + diff );  
+
+                var state = Output[ index ];
+                state.Illness = currentIllness;
+                Output[index]     = state;
+            }
+
+            private float GetIllness(int x, int y, int z, int w)
+            {
+                return Input[PositionUtils.PositionToIndex( x, y, z, w )].Illness;
+            }
+        }
+
+
+        
     }
 }

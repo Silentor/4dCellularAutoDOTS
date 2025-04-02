@@ -165,10 +165,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Workflow: 1
   HeatSpreadSpeed: 0.1
+  WaveDampCoeff: 0.95
+  WaveRigidCoeff: 10
+  IllSpeed: 0.1
   NeutralColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   HotColor: {r: 1, g: 0, b: 0, a: 1}
   ColdColor: {r: 0, g: 0, b: 1, a: 1}
   CellPrefab: {fileID: 692388508308312067, guid: cf968a14725c9024186ec3db43ba1b81, type: 3}
+  CameraCarveSize: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -9,13 +9,15 @@ using Random = Unity.Mathematics.Random;
 
 namespace Core
 {
+    [CreateAfter(typeof(FixedStepSimulationSystemGroup))]
     partial struct GenerateSystem : ISystem
     {
-        [BurstCompile]
+        //[BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<Config>();
-            //state.RequireForUpdate<Tag_2dWorkflow>();
+            var fixedGroup = state.World.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
+            fixedGroup.Timestep = 1/10f;
         }
 
         [BurstCompile]
@@ -29,6 +31,13 @@ namespace Core
             var cellPrefab = config.CellPrefab;
 
             var rnd = new Random( config.Seed );
+
+            var inputEntity = state.EntityManager.CreateEntity();
+            state.EntityManager.AddComponent<Input>( inputEntity );
+            state.EntityManager.SetComponentData( inputEntity, new Input()
+                                                               {
+                                                                       CameraCarveSize = config.CameraCarveSize,
+                                                               } );
 
             // Create a new render entity for each cell in the grid (but only for 3d max)
             var maxRenderableEntities = math.min( config.GridTotalCount, Config.GridSize * Config.GridSize * Config.GridSize );
@@ -71,6 +80,7 @@ namespace Core
                         var pos = PositionUtils.IndexToPosition2( index++ );
                         trans.ValueRW.Position.x = pos.x + 0.5f;
                         trans.ValueRW.Position.z = pos.y + 0.5f;
+                        trans.ValueRW.Position.y = 0.5f;
                     }
                 }
                 else if ( config.Workflow == EWorkflow.Mode3D || config.Workflow == EWorkflow.Mode4D )

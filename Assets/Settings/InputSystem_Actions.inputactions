@@ -72,7 +72,7 @@
                     "name": "Next",
                     "type": "Button",
                     "id": "b7230bb6-fc9b-4f52-8b25-f5e19cb2c2ba",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -81,13 +81,13 @@
                     "name": "Sprint",
                     "type": "Button",
                     "id": "641cd816-40e6-41b4-8c3d-04687c349290",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Cold",
+                    "name": "AltAttack",
                     "type": "Button",
                     "id": "be682b88-12ac-426e-b829-fbe756c7352b",
                     "expectedControlType": "",
@@ -99,6 +99,33 @@
                     "name": "WCoordDelta",
                     "type": "Value",
                     "id": "0d964505-68f0-4e23-8f9b-b2455802be73",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "ChangeTemp",
+                    "type": "Button",
+                    "id": "6ba73979-96a7-4a0d-9dd1-489eabba614d",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "ChangeWave",
+                    "type": "Button",
+                    "id": "d499c553-5862-42ef-aa89-1070753b75d5",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "ChangeIll",
+                    "type": "Button",
+                    "id": "d4d811c9-9ff2-455a-8408-e56fe3f6d2ec",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -520,7 +547,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "Cold",
+                    "action": "AltAttack",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -556,6 +583,39 @@
                     "action": "WCoordDelta",
                     "isComposite": false,
                     "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "ee31a241-ed6b-4712-9322-809cc3060eb8",
+                    "path": "<Keyboard>/f1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ChangeTemp",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2b24a389-e4e0-4882-a1be-0a89fafe4abf",
+                    "path": "<Keyboard>/f2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ChangeWave",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "571e63f6-5ac5-47df-aef9-74f0cfa98cb4",
+                    "path": "<Keyboard>/f3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "ChangeIll",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },

@@ -2,6 +2,7 @@ using System;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using Object = System.Object;
 
 namespace Core
 {
@@ -11,12 +12,16 @@ namespace Core
         // [Min(4)]
         // public int GridSize = 256;
         public float HeatSpreadSpeed = 0.1f;
+        public float WaveDampCoeff = 0.1f;
+        public float WaveRigidCoeff = 0.5f;
+        public float IllSpeed = 0.1f;
         public Color NeutralColor = new Color( 0.5f, 0.5f, 0.5f, 1 );
         public Color HotColor = new Color( 1f, 0f, 0f, 1 );
         public Color ColdColor = new Color( 0f, 0f, 1f, 1 );
         public GameObject CellPrefab;
 
-        
+        [Min(0)]
+        public int CameraCarveSize = 10;
     }
 
     public enum EWorkflow
@@ -34,12 +39,16 @@ namespace Core
              var config = new Config()
                           {
                                   HeatSpreadSpeed = authoring.HeatSpreadSpeed,
+                                  WaveDampCoeff = authoring.WaveDampCoeff,
+                                  WaveRigidCoeff = authoring.WaveRigidCoeff,
+                                  IllSpeed = authoring.IllSpeed,
                                   NeutralColor    = (Vector4)authoring.NeutralColor,
                                   HotColor        = (Vector4)authoring.HotColor,
                                   ColdColor       = (Vector4)authoring.ColdColor,
                                   CellPrefab      = GetEntity( authoring.CellPrefab, TransformUsageFlags.Renderable ),
                                   Seed            = (uint)UnityEngine.Random.Range( 1, uint.MaxValue ),
                                   Workflow = authoring.Workflow,
+                                  CameraCarveSize = authoring.CameraCarveSize,
                                   GridTotalCount = authoring.Workflow switch {
                                                            EWorkflow.Mode2D => Config.GridSize * Config.GridSize,
                                                            EWorkflow.Mode3D => Config.GridSize * Config.GridSize * Config.GridSize,
@@ -68,6 +77,10 @@ namespace Core
         public uint Seed;
 
         public float  HeatSpreadSpeed;
+        public float WaveDampCoeff;
+        public float WaveRigidCoeff;
+        public float IllSpeed;
+
         public float4 NeutralColor;
         public float4 HotColor;
         public float4 ColdColor;
@@ -75,8 +88,10 @@ namespace Core
         public Entity CellPrefab;
 
         public EWorkflow Workflow;
-        public const int GridSize = 64;
+        public const int GridSize = 32;
         public int GridTotalCount;
+
+        public int CameraCarveSize;
     }
 
     public struct Tag_2dWorkflow : IComponentData{ }

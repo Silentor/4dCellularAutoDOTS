@@ -3,7 +3,10 @@ using Unity.Entities;
 
 namespace Core
 {
-    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateBefore(typeof(SimulateSystem2d))]
+    [UpdateBefore(typeof(SimulateSystem3d))]
+    [UpdateBefore(typeof(SimulateSystem4d))]
     public partial struct SwapSimulationState : ISystem
     {
         [BurstCompile]
@@ -15,10 +18,8 @@ namespace Core
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var simulStateEntity = SystemAPI.GetSingletonEntity<SimulationState>();
-            var simulState = state.EntityManager.GetComponentData<SimulationState>( simulStateEntity );
-            simulState.SwapBuffers();
-            state.EntityManager.SetComponentData( simulStateEntity, simulState );
+            var simulState = SystemAPI.GetSingletonRW<SimulationState>();
+            simulState.ValueRW.SwapBuffers();
         }
 
         [BurstCompile]
