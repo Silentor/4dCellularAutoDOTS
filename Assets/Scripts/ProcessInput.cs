@@ -37,7 +37,7 @@ namespace Core
             if ( input.IsSelectedCell && (input.Clicked || input.AltClicked))
             {
                 var effectMult = input.Clicked ? 1 : input.AltClicked ? -1 : 0;
-                var currentBufferEntity = simulState.GetCurrentBuffer();                //Prev for reading, current for writing (and for reading prev/prev state)
+                var currentBufferEntity = simulState.CellsBuffer;         
                 var currentBuffer = SystemAPI.GetBuffer<CellState>( currentBufferEntity );
                 var clickedPos = input.SelectedCell;
                 var waveheight = config.Workflow switch

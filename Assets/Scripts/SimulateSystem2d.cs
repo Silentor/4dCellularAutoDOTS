@@ -25,19 +25,18 @@ namespace Core
             if( !simulState.ProcessSimulation)
                 return;
 
-            var currentBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetCurrentBuffer() ); //actually frame - 2, also it will be current buffer
-            var prevBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetPreviousBuffer() );   //actually frame - 1
+            var currentBuffer = SystemAPI.GetBuffer<CellState>( simulState.CellsBuffer ); 
             var config          = SystemAPI.GetSingleton<Config>();
             
 
-            state.Dependency = SimulateCellularAuto( state.Dependency, ref state, prevBuffer, currentBuffer, config );
+            state.Dependency = SimulateCellularAuto( state.Dependency, ref state, currentBuffer, config );
         }
 
         [BurstCompile]
-        private JobHandle SimulateCellularAuto(JobHandle dependency, ref SystemState state, DynamicBuffer<CellState> prevBuffer, DynamicBuffer<CellState> prevPrev_CurrentBuffer, Config config )
+        private JobHandle SimulateCellularAuto(JobHandle dependency, ref SystemState state, DynamicBuffer<CellState> buffer, Config config )
         {
-            var input = prevBuffer.ToNativeArray( state.WorldUpdateAllocator );
-            var output = prevPrev_CurrentBuffer.AsNativeArray();
+            var input = buffer.ToNativeArray( state.WorldUpdateAllocator );
+            var output = buffer.AsNativeArray();
             var job = new SimulateJob()
                       {
                               Input               = input,
@@ -45,7 +44,7 @@ namespace Core
                               ThermalConductivity = math.saturate( config.HeatSpreadSpeed ),
                               WaveDampingCoeff    = math.saturate( config.WaveDampCoeff ),
                               IllSpeed            = math.saturate( config.IllSpeed ),
-                                Seed                = (config.Seed % 7919) + 1,             //Big seeds spoil math.cnoise result
+                              Seed                = (config.Seed % 7919) + 1,             //Big seeds spoil math.cnoise result
                       };
             dependency = job.Schedule( input.Length, 2048, dependency );
             //job.Run( input.Length );
@@ -93,17 +92,16 @@ namespace Core
                 neimannNeighbors[3] = Input[ PositionUtils.PositionToIndex( x, nextY ) ];
                 // var neimannNeighborsRO = (ReadOnlySpan<CellState>)neimannNeighbors;
 
-                var inputState = Input[ index ];
                 var outputState = Output[ index ];
 
-                HeatSpread( neimannNeighbors, in inputState, ref outputState, ThermalConductivity );
+                HeatSpread( neimannNeighbors, ref outputState, ThermalConductivity );
                 WaveSpread( neimannNeighbors, ref outputState, WaveDampingCoeff );
-                IllSpread( pos, neimannNeighbors, in inputState, ref outputState, IllSpeed, Seed );
+                IllSpread( pos, neimannNeighbors, ref outputState, IllSpeed, Seed );
 
                 Output[ index ] = outputState;
             }
 
-            private static void HeatSpread( CellState* neighbors, in CellState input, ref CellState output, float thermalConductivity )
+            private static void HeatSpread( CellState* neighbors, ref CellState output, float thermalConductivity )
             {
                 var average = 0f;
                 average += neighbors[0].Temperature;
@@ -112,7 +110,7 @@ namespace Core
                 average += neighbors[3].Temperature;
                 average /= 4f;
 
-                var currentTemp = input.Temperature;
+                var currentTemp = output.Temperature;
                 var tempChange = average - currentTemp;
                 tempChange  *= thermalConductivity;                    //Temperature conductivity
                 currentTemp += tempChange;
@@ -131,13 +129,15 @@ namespace Core
                 smoothedHeight += neighbors[3].Height;
                 smoothedHeight /= 2;            //Intentional, neighbors count / 2
 
-                var waveHeightChange = output.Height;       //Reuse value from prev prev state
+                var oldHeight = output.Height;
+                var waveHeightChange = oldHeight - output.HeightDiff;       //Get value from prev prev state
                 var height = smoothedHeight - waveHeightChange;       //Move height to zero with velocity from past wave height. Smart trick!
                 height      *= dampingCoeff;                              //Damping
                 output.Height = height;
+                output.HeightDiff = height - oldHeight;
             }
 
-            private static void IllSpread( float2 pos, CellState* neighbors, in CellState input, ref CellState output, float illSpeed,  float seed )
+            private static void IllSpread( float2 pos, CellState* neighbors, ref CellState output, float illSpeed,  float seed )
             {
                 var maxIllness = 0f;
                 maxIllness = math.max( maxIllness, neighbors[0].Illness );
@@ -147,7 +147,7 @@ namespace Core
 
                 var illSpeedNoise = noise.cnoise( (pos + seed ) / 6.7f ) ; //Add some random to ill spread speed
                 illSpeedNoise = math.smoothstep( -1.1f, 1, illSpeedNoise );
-                var currentIllness = input.Illness;
+                var currentIllness = output.Illness;
                 var diff =  math.max(maxIllness - currentIllness, 0) * illSpeed * illSpeedNoise; 
                 currentIllness = math.saturate( currentIllness + diff );
                 output.Illness = currentIllness;

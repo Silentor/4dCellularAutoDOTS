@@ -9,6 +9,9 @@ namespace Core
     public class ConfigAuthor : MonoBehaviour
     {
         public EWorkflow Workflow;
+
+        [Min(1/60f)]
+        public float Timestep = 1 / 15f;
         // [Min(4)]
         // public int GridSize = 256;
         public float HeatSpreadSpeed = 0.1f;
@@ -21,6 +24,8 @@ namespace Core
 
         [Min(0)]
         public int CameraCarveSize = 10;
+
+        
     }
 
     public enum EWorkflow
@@ -45,6 +50,7 @@ namespace Core
                                   ColdColor       = (Vector4)authoring.ColdColor,
                                   CellPrefab      = GetEntity( authoring.CellPrefab, TransformUsageFlags.Renderable ),
                                   Seed            = (uint)UnityEngine.Random.Range( 1, uint.MaxValue ),
+                                  Timestep = authoring.Timestep,
                                   Workflow = authoring.Workflow,
                                   CameraCarveSize = authoring.CameraCarveSize,
                                   GridTotalCount = authoring.Workflow switch {
@@ -73,6 +79,7 @@ namespace Core
     public struct Config : IComponentData
     {
         public uint Seed;
+        public float Timestep;
 
         public float  HeatSpreadSpeed;
         public float WaveDampCoeff;
@@ -85,7 +92,7 @@ namespace Core
         public Entity CellPrefab;
 
         public EWorkflow Workflow;
-        public const int GridSize = 32;
+        public const int GridSize = 64;
         public int GridTotalCount;
 
         public int CameraCarveSize;

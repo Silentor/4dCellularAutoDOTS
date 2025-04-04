@@ -24,7 +24,7 @@ namespace Core
         public void OnUpdate(ref SystemState state)
         {
             var simulState = SystemAPI.GetSingleton<SimulationState>();
-            var currentBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetCurrentBuffer() );
+            var currentBuffer = SystemAPI.GetBuffer<CellState>( simulState.CellsBuffer );
              var config          = SystemAPI.GetSingleton<Config>();
              var input = SystemAPI.GetSingleton<Input>();
              state.Dependency = UpdateCellColor( state.Dependency, ref state, currentBuffer, config, input );

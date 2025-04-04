@@ -12,5 +12,6 @@ namespace Core
         public float Temperature;
         public float Illness;
         public float Height;
+        public float HeightDiff;            //Height change against the previous frame, need for proper wave simulation
     }
 }

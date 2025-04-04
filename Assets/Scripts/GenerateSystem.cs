@@ -1,23 +1,18 @@
-using System;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Rendering;
 using Unity.Transforms;
 using Random = Unity.Mathematics.Random;
 
 
 namespace Core
 {
-    [CreateAfter(typeof(FixedStepSimulationSystemGroup))]        //To initialize timestep
     partial struct GenerateSystem : ISystem
     {
-        //[BurstCompile]
+        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<Config>();
-            var fixedGroup = state.World.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.Timestep = 1/15f;
         }
 
         [BurstCompile]
@@ -43,13 +38,9 @@ namespace Core
                 //Create simulation grid state buffer
                 var simulStateEntity = state.EntityManager.CreateSingleton<SimulationState>( "SimulState" );
                 var gridEntity1 = state.EntityManager.CreateEntity( );
-                var gridEntity2 = state.EntityManager.CreateEntity( );
                 state.EntityManager.AddBuffer<CellState>( gridEntity1 );
-                state.EntityManager.AddBuffer<CellState>( gridEntity2 );
                 var buffer1     = state.EntityManager.GetBuffer<CellState>( gridEntity1 );
-                var buffer2     = state.EntityManager.GetBuffer<CellState>( gridEntity2 );
                 buffer1.Length = config.GridTotalCount;
-                buffer2.Length = config.GridTotalCount;
                 for ( int i = 0; i < config.GridTotalCount; i++ )
                 {
                     var initState = new CellState()
@@ -57,10 +48,9 @@ namespace Core
                                          Temperature = rnd.NextFloat( -1, 1 ),
                                  };
                     buffer1[ i ] = initState;
-                    buffer2[ i ] = initState;
                 }
                 
-                state.EntityManager.SetComponentData( simulStateEntity, new SimulationState(gridEntity1, gridEntity2) );
+                state.EntityManager.SetComponentData( simulStateEntity, new SimulationState(gridEntity1) );
             }
 
             {
