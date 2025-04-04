@@ -17,6 +17,7 @@ namespace Core
         private InputAction _attackAction;
         private InputAction _altAttackAction;
         private InputAction _changeCarveSizeAction;
+        private InputAction _timeFreezeAction;
 
         private Camera _camera;
 
@@ -33,6 +34,7 @@ namespace Core
             _wCoordDeltaAction = InputSystem.actions.FindAction( "WCoordDelta" );
             _attackAction    = InputSystem.actions.FindAction( "Attack" );
             _altAttackAction = InputSystem.actions.FindAction( "AltAttack" );
+            _timeFreezeAction = InputSystem.actions.FindAction( "TimeFreeze" );
         }
 
         protected override void OnUpdate( )
@@ -90,6 +92,8 @@ namespace Core
                 input.CameraPosition = _camera.transform.position;
                 input.MouseRay       = mouseRay.direction;
             }
+
+            input.IsTimeFreezed = _timeFreezeAction.IsPressed();
         }
     }
 }

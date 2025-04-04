@@ -1,14 +1,10 @@
 using System;
 using Unity.Burst;
-using Unity.Burst.CompilerServices;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Profiling;
-using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Core
 {
@@ -27,6 +23,9 @@ namespace Core
         public void OnUpdate(ref SystemState state )
         {
             var simulState = SystemAPI.GetSingleton<SimulationState>();
+            if( !simulState.ProcessSimulation)
+                return;
+            
             var currentBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetCurrentBuffer() ); //actually frame - 2, also it will be current buffer
             var prevBuffer = SystemAPI.GetBuffer<CellState>( simulState.GetPreviousBuffer() );   //actually frame - 1
             var config          = SystemAPI.GetSingleton<Config>();

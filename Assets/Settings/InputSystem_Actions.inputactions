@@ -139,6 +139,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "TimeFreeze",
+                    "type": "Button",
+                    "id": "b3e46787-2737-428d-b61d-eb9377a529ce",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -658,6 +667,17 @@
                     "action": "ChangeCarveSize",
                     "isComposite": false,
                     "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "7d685079-4596-47b3-a491-05016467f900",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "TimeFreeze",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },

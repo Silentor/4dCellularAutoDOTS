@@ -10,6 +10,8 @@ namespace Core
         public readonly Entity CellsBuffer2;            //DynamicBuffer<CellState>
 
         public int  CurrentBufferIndex;
+        public bool ProcessSimulation;
+
 
         public SimulationState(Entity cellsBuffer1, Entity cellsBuffer2 ) : this()
         {

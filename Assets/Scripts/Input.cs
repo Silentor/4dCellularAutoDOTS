@@ -17,6 +17,8 @@ namespace Core
         public float3 CameraPosition;
         public float3 MouseRay;
         public float CameraCarveSize;
+
+        public bool  IsTimeFreezed;
     }
 
     public enum EChangeMode

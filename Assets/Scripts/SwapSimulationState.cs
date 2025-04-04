@@ -18,8 +18,9 @@ namespace Core
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var simulState = SystemAPI.GetSingletonRW<SimulationState>();
-            simulState.ValueRW.SwapBuffers();
+            ref var simulState = ref SystemAPI.GetSingletonRW<SimulationState>().ValueRW;
+            if( simulState.ProcessSimulation )
+                simulState.SwapBuffers();
         }
 
         [BurstCompile]

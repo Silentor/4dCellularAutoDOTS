@@ -31,11 +31,13 @@ namespace Core
             input.SelectedCell = new int4( selectedCell, input.WCoord );
 
             //Debug.Log( $"ray {input.MouseRay}, is selected {input.IsSelectedCell}, pos {input.SelectedCell}" );
+            ref var simulState = ref SystemAPI.GetSingletonRW<SimulationState>().ValueRW;
+            simulState.ProcessSimulation = !input.IsTimeFreezed;
 
             if ( input.IsSelectedCell && (input.Clicked || input.AltClicked))
             {
                 var effectMult = input.Clicked ? 1 : input.AltClicked ? -1 : 0;
-                var currentBufferEntity = SystemAPI.GetSingleton<SimulationState>().GetCurrentBuffer();    //Prev for reading, current for writing (and for reading prev/prev state)
+                var currentBufferEntity = simulState.GetCurrentBuffer();                //Prev for reading, current for writing (and for reading prev/prev state)
                 var currentBuffer = SystemAPI.GetBuffer<CellState>( currentBufferEntity );
                 var clickedPos = input.SelectedCell;
                 var waveheight = config.Workflow switch
