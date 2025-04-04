@@ -27,7 +27,7 @@ namespace Core
             var config = SystemAPI.GetSingleton<Config>();
             ref var input = ref SystemAPI.GetSingletonRW<Input>().ValueRW;
 
-            input.IsSelectedCell = TryFindSelectedCell( config.Workflow, input.CameraPosition, input.MouseRay, config.CameraCarveSize, out var selectedCell );
+            input.IsSelectedCell = TryFindSelectedCell( config.Workflow, input.CameraPosition, input.MouseRay, input.CameraCarveSize, out var selectedCell );
             input.SelectedCell = new int4( selectedCell, input.WCoord );
 
             //Debug.Log( $"ray {input.MouseRay}, is selected {input.IsSelectedCell}, pos {input.SelectedCell}" );

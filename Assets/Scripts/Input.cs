@@ -12,14 +12,11 @@ namespace Core
         public EChangeMode ChangeMode;
 
         public int4 SelectedCell;
-        public float TemperatureDiff;
-        public float HeightValue;
-        public float IllValue;
         public int WCoord;
 
         public float3 CameraPosition;
         public float3 MouseRay;
-        public int CameraCarveSize;
+        public float CameraCarveSize;
     }
 
     public enum EChangeMode

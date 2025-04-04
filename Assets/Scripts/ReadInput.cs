@@ -1,5 +1,6 @@
 ﻿using System;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Object = System.Object;
@@ -15,13 +16,17 @@ namespace Core
         private InputAction _wCoordDeltaAction;
         private InputAction _attackAction;
         private InputAction _altAttackAction;
+        private InputAction _changeCarveSizeAction;
+
+        private Camera _camera;
 
         protected override void OnCreate( )
         {
             base.OnCreate();
 
-            RequireForUpdate<Input>();
+            RequireForUpdate<Config>();
 
+            _changeCarveSizeAction = InputSystem.actions.FindAction( "ChangeCarveSize" );
             _changeTempAction = InputSystem.actions.FindAction( "ChangeTemp" );
             _changeWaveAction = InputSystem.actions.FindAction( "ChangeWave" );
             _changeIllAction  = InputSystem.actions.FindAction( "ChangeIll" );
@@ -32,8 +37,21 @@ namespace Core
 
         protected override void OnUpdate( )
         {
-            ref var input = ref SystemAPI.GetSingletonRW<Input>().ValueRW;
             var config = SystemAPI.GetSingleton<Config>();
+
+            if ( !SystemAPI.TryGetSingletonRW( out RefRW<Input> inputRW ) )
+            {
+                var inputEntity = EntityManager.CreateEntity();
+                EntityManager.AddComponent<Input>( inputEntity );
+                EntityManager.SetComponentData( inputEntity, new Input()
+                                                             {
+                                                                     CameraCarveSize = config.CameraCarveSize,
+                                                             } );
+            }
+
+            inputRW = SystemAPI.GetSingletonRW<Input>();
+            ref var input = ref inputRW.ValueRW;
+
 
             if ( _changeTempAction.triggered )
                 input.ChangeMode = EChangeMode.Temp;
@@ -51,6 +69,27 @@ namespace Core
 
             input.Clicked = _attackAction.IsPressed();
             input.AltClicked = _altAttackAction.IsPressed();
+
+            if ( config.Workflow >= EWorkflow.Mode3D )
+            {
+                var deltaCarveSize = _changeCarveSizeAction.ReadValue<float>();
+                input.CameraCarveSize = math.clamp( input.CameraCarveSize + deltaCarveSize, 0, Config.GridSize );
+            }
+
+            if ( !_camera )
+            {
+                _camera = Camera.main;
+            }
+
+            if ( _camera )
+            {
+                //Select cell by mouse hover
+                var mousePosition = Mouse.current.position.ReadValue();
+                var mouseRay = _camera.ScreenPointToRay( mousePosition );
+
+                input.CameraPosition = _camera.transform.position;
+                input.MouseRay       = mouseRay.direction;
+            }
         }
     }
 }

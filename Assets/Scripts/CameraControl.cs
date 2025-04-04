@@ -1,9 +1,6 @@
-using System;
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Object = System.Object;
 
 namespace Core
 {
@@ -17,15 +14,10 @@ namespace Core
         private InputAction _moveAction;
         private InputAction _sprintAction;
         private Camera _camera;
-        private World _world;
-        private ConfigAuthor _config;
-        private EntityQuery _inputComponentQuery;
 
 
         private void Start( )
         {
-            _inputComponentQuery = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery( typeof(Input) );
-
             _lookAroundAction = InputSystem.actions.FindAction( "Look" );
             _moveAction       = InputSystem.actions.FindAction( "Move" );
             _sprintAction     = InputSystem.actions.FindAction( "Sprint" );
@@ -33,16 +25,10 @@ namespace Core
             _camera = Camera.main;
             _cameraTransform  = _camera.transform;
             _eulerRotation    = _cameraTransform.rotation.eulerAngles;
-
-            _world = World.DefaultGameObjectInjectionWorld;
-            _config = FindAnyObjectByType<ConfigAuthor>();
         }
 
         private void Update( )
         {
-            if( !_world.IsCreated || _inputComponentQuery.IsEmpty )
-                return;
-
             //Look around
             var mousePosition = Mouse.current.position.ReadValue();
             if ( !(mousePosition.x < 0) && !(mousePosition.x > Screen.width) &&
@@ -64,30 +50,6 @@ namespace Core
                 var localMovement = _cameraTransform.rotation * worldMovement;
                 _cameraTransform.position += localMovement;
             }
-
-            //Select cell by mouse hover
-            int2 selectedCell = int2.zero;
-            bool isSelectedCell = false;
-            var mouseRay = _camera.ScreenPointToRay( mousePosition );
-            
-            // var gridPlane = new Plane( Vector3.up, 0 );
-            // if( gridPlane.Raycast( mouseRay, out var enter ) )
-            // {
-            //      var hitPoint = mouseRay.GetPoint( enter );
-            //      selectedCell = new int2( Mathf.FloorToInt( hitPoint.x ), Mathf.FloorToInt( hitPoint.z ) );
-            //      if( selectedCell.x >= 0 && selectedCell.x < Config.GridSize &&
-            //          selectedCell.y >= 0 && selectedCell.y < Config.GridSize )
-            //      {
-            //          isSelectedCell = true;
-            //      }
-            // }
-
-            //Update Input component for ECS
-            ref var input = ref _inputComponentQuery.GetSingletonRW<Input>().ValueRW;
-            input.CameraPosition = transform.position;
-            input.MouseRay = mouseRay.direction;
-            input.CameraCarveSize = _config.CameraCarveSize;
         }
-
     }
 }

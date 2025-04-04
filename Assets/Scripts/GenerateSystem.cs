@@ -32,13 +32,6 @@ namespace Core
 
             var rnd = new Random( config.Seed );
 
-            var inputEntity = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponent<Input>( inputEntity );
-            state.EntityManager.SetComponentData( inputEntity, new Input()
-                                                               {
-                                                                       CameraCarveSize = config.CameraCarveSize,
-                                                               } );
-
             // Create a new render entity for each cell in the grid (but only for 3d max)
             var maxRenderableEntities = math.min( config.GridTotalCount, Config.GridSize * Config.GridSize * Config.GridSize );
             for (int i = 0; i < maxRenderableEntities; i++)

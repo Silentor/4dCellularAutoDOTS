@@ -66,7 +66,7 @@ namespace Core
 
             public EWorkflow Workflow;
             public float3 CameraPos;
-            public int CarveSizeSq;
+            public float CarveSizeSq;
 
             public void Execute( ref URPMaterialPropertyBaseColor color, ref LocalTransform trans, [EntityIndexInQuery] int entityIndex )
             {
