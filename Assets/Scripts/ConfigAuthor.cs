@@ -13,7 +13,6 @@ namespace Core
         // public int GridSize = 256;
         public float HeatSpreadSpeed = 0.1f;
         public float WaveDampCoeff = 0.1f;
-        public float WaveRigidCoeff = 0.5f;
         public float IllSpeed = 0.1f;
         public Color NeutralColor = new Color( 0.5f, 0.5f, 0.5f, 1 );
         public Color HotColor = new Color( 1f, 0f, 0f, 1 );
@@ -40,7 +39,6 @@ namespace Core
                           {
                                   HeatSpreadSpeed = authoring.HeatSpreadSpeed,
                                   WaveDampCoeff = authoring.WaveDampCoeff,
-                                  WaveRigidCoeff = authoring.WaveRigidCoeff,
                                   IllSpeed = authoring.IllSpeed,
                                   NeutralColor    = (Vector4)authoring.NeutralColor,
                                   HotColor        = (Vector4)authoring.HotColor,
@@ -78,7 +76,6 @@ namespace Core
 
         public float  HeatSpreadSpeed;
         public float WaveDampCoeff;
-        public float WaveRigidCoeff;
         public float IllSpeed;
 
         public float4 NeutralColor;

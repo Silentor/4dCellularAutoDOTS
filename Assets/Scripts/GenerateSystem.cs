@@ -9,7 +9,7 @@ using Random = Unity.Mathematics.Random;
 
 namespace Core
 {
-    [CreateAfter(typeof(FixedStepSimulationSystemGroup))]
+    [CreateAfter(typeof(FixedStepSimulationSystemGroup))]        //To initialize timestep
     partial struct GenerateSystem : ISystem
     {
         //[BurstCompile]
@@ -17,7 +17,7 @@ namespace Core
         {
             state.RequireForUpdate<Config>();
             var fixedGroup = state.World.GetExistingSystemManaged<FixedStepSimulationSystemGroup>();
-            fixedGroup.Timestep = 1/10f;
+            fixedGroup.Timestep = 1/15f;
         }
 
         [BurstCompile]

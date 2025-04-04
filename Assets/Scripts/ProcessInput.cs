@@ -38,11 +38,18 @@ namespace Core
                 var currentBufferEntity = SystemAPI.GetSingleton<SimulationState>().GetCurrentBuffer();    //Prev for reading, current for writing (and for reading prev/prev state)
                 var currentBuffer = SystemAPI.GetBuffer<CellState>( currentBufferEntity );
                 var clickedPos = input.SelectedCell;
+                var waveheight = config.Workflow switch
+                                 {
+                                         EWorkflow.Mode2D => 1,
+                                         EWorkflow.Mode3D => 2,
+                                         EWorkflow.Mode4D => 3,
+                                         _ => throw new ArgumentOutOfRangeException()
+                                 };
 
                 switch ( input.ChangeMode )
                 {
                     case EChangeMode.Temp: ChangeTemperature( currentBuffer, clickedPos, 1 * effectMult );  break;
-                    case EChangeMode.Wave: AddWave( currentBuffer, clickedPos, 1 * effectMult); break;
+                    case EChangeMode.Wave: AddWave( currentBuffer, clickedPos, waveheight * effectMult); break;
                     case EChangeMode.Ill: AddIllness( currentBuffer, clickedPos, 1 * effectMult );  break;
                     default:
                         throw new ArgumentOutOfRangeException();

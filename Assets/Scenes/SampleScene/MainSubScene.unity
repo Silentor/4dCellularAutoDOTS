@@ -165,9 +165,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Workflow: 2
   HeatSpreadSpeed: 0.1
-  WaveDampCoeff: 0.95
-  WaveRigidCoeff: 10
-  IllSpeed: 0.1
+  WaveDampCoeff: 0.97
+  IllSpeed: 0.5
   NeutralColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
   HotColor: {r: 1, g: 0, b: 0, a: 1}
   ColdColor: {r: 0, g: 0, b: 1, a: 1}
