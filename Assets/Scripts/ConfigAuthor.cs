@@ -92,7 +92,7 @@ namespace Core
         public Entity CellPrefab;
 
         public EWorkflow Workflow;
-        public const int GridSize = 64;
+        public const int GridSize = 40;
         public int GridTotalCount;
 
         public int CameraCarveSize;

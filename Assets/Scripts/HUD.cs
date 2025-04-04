@@ -21,7 +21,7 @@ namespace Core
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
         {
-            Application.targetFrameRate = 60;
+            //Application.targetFrameRate = 60;
 
             _world = World.DefaultGameObjectInjectionWorld;
             var uiDocument = GetComponent<UIDocument>();
@@ -44,7 +44,7 @@ namespace Core
                 return;
 
             if(_configQuery.TryGetSingleton( out Config config ) & _inputQuery.TryGetSingleton( out Input input )) 
-                _info.text = $"Workflow {config.Workflow}, size {Config.GridSize}, WCoord: {input.WCoord}, change mode {input.ChangeMode}";
+                _info.text = $"Workflow {config.Workflow}, size {Config.GridSize}, WCoord: {input.WCoord}, change {input.ChangeMode}, time {(input.IsTimeFreezed ? "stop" : "play")}, carve {input.CameraCarveSize}";
 
             if( Time.time > _fpsTimer + 1f )
             {
