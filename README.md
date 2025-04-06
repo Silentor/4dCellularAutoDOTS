@@ -1,6 +1,6 @@
 # 4dCellularAutoDOTS
 2-3-4D cellular automata simulator+visualizer using Unity DOTS
-![Movie_001-ezgif com-optimize](https://github.com/user-attachments/assets/77a73f2a-bcc1-467b-819a-8d25c811c44f)
+![Unity_E7X6aoH1D6-ezgif com-optimize](https://github.com/user-attachments/assets/ed967f94-91f1-45f0-82d8-b12adfdf12a3)
 
 ## Preface
 The main goal is to learn some practical features of DOTS in the fields of simulation and rendering. I want to experiment with various approaches for visualizing 4D geometry, particularly with a 4D grid of hypercubes. To bring this system to life, we will use cellular automata with some forces influencing the grid. It's easier to begin with a 2D implementation and then extend it to 3D and 4D. There are visualization challenges for high-dimensional systems: I need a carving solution to look inside the 3D grid, and the same, with w-coordinate variation, for the 4D grid.
